@@ -1,40 +1,24 @@
 # 2023 Geo spatial data for London Maps (Including Expensive zones, ehe~)
-
-# GADM codes of subdivisions:
-# 0 = country
-# 1 = provinces
-# 2 = regencies & cities
-# 3 = villages?
-# 4 = vvilllagess???
-# --> Point (4) makes your computer run SLOWLY!\
-# Consider to use filter prior using this.
-
+library(tidyverse)
+library(rgdal)
+library(sf)
+library(readxl)
+library(leaflet)
 ################################################################################
 # 1. INTRO: Load the Geo spatial file
 # TRIAL to use a shapefile (*.shp) files first!
 ################################################################################
 
 # 1. Unzip file coz' file downloaded from GADM is in *.zip
-UK_shp_zip = '/home/ron/Downloads/2023 LPDP GUIDES & Documents/2023 London Maps/gadm41_GBR_shp.zip'
-UK_shp_out = '/home/ron/Downloads/2023 LPDP GUIDES & Documents/2023 London Maps/gadm41_GBR_shp'
+# UK_shp_zip = '/home/ron/Downloads/2023 LPDP GUIDES & Documents/2023 London Maps/gadm41_GBR_shp.zip'
+# UK_shp_out = '/home/ron/Downloads/2023 LPDP GUIDES & Documents/2023 London Maps/gadm41_GBR_shp'
+# unzip (UK_shp_zip, exdir=UK_shp_out)
 
-unzip (UK_shp_zip, exdir=UK_shp_out)
+# 2. Load
+UK_spdf <- sf::read_sf(dsn = "raw_data/gadm41_GBR_shp/gadm41_GBR_4.shp")
 
-# 2. Load the file, we use GADM code 4 = vvilllagess???
-UK_shp_path_LINUX = '/home/ron/Downloads/2023 LPDP GUIDES & Documents/2023 London Maps/gadm41_GBR_shp/gadm41_GBR_4.shp'
-
-library(rgdal)
-library(tidyverse)
-library(sf) # Karena tidyverse ga bisa wrangling data geospasial.
-
-UK_spdf <- readOGR( 
-  dsn= UK_shp_path_LINUX, 
-  #layer="TM_WORLD_BORDERS_SIMPL-0.3",
-  verbose=FALSE
-)
-
-# summary(my_spdf) # tells you the max and min coordinates, the kind of projection in use
-# length(my_spdf) # how many regions you have
+# summary(UK_spdf) # tells you the max and min coordinates, the kind of projection in use
+# length(UK_spdf) # how many regions you have
 
 head(UK_spdf@data)
 # glimpse(UK_spdf)
@@ -56,6 +40,20 @@ ggplot() +
                fill="#69b3a2", color="white") +
   theme_void()
 
+# NEXT:
+# U have to combine *.csv OR *.xlsx data to *.shp (CANNOT BE RUN VICE-VERSA)!!!
+# Convert the 'SpatialPolygonsDataFrame' to 'sf' object first!
+
+# Combine the df to *.shp data (CANNOT BE RUN VICE-VERSA)!!!
+# Convert the 'SpatialPolygonsDataFrame' to 'sf' object first:
+# Recall GBR_spdf <- st_read(dsn = GBR_shp_path_LINUX)
+
+# Notes: DO NOT Filter sf Data!!!!
+UK_spdf_sf <- sf::st_as_sf(UK_spdf, coords = c("longitude", "latitude"), crs = '4326')
+glimpse(GBR_spdf_sf)
+
+
+
 ################################################################################
 # 2. Load & Data wrangling for Greater London areas,
 # Specifically I want to highlight the expensive zones
@@ -68,16 +66,11 @@ ggplot() +
 # SOURCE: https://data.london.gov.uk/dataset/london-workplace-zone-classification
 # London Workplace Zone Classification (LWZC)
 
-library(readxl)
-
-G_LDN_WZ_Path_LINUX = '/home/ron/Downloads/2023 LPDP GUIDES & Documents/2023 London Maps/LWZC Classification.xls'
+G_LDN_WZ_Path_LINUX = 'raw_data/LWZC Classification.xls'
 G_LDN_WZ <- read_excel(G_LDN_WZ_Path_LINUX)
-# view(G_LDN_WZ)
 head(G_LDN_WZ)
 unique(G_LDN_WZ$'LA name')
 unique(G_LDN$NAME_3) # Name 3 = seems like boroughs/administrative divisions/districts
-
-# Kok goblok sih nama variabelnya pakek spasi semua?????
 names(G_LDN_WZ) <- gsub(" ", "_", names(G_LDN_WZ))
 head(G_LDN_WZ)
 
@@ -87,7 +80,7 @@ unique(NeedToBeCorrected_gov$LA_name)
 
 NeedToBeCorrected_GADM <- G_LDN[!G_LDN$NAME_3 %in% G_LDN_WZ$LA_name,]
 unique(NeedToBeCorrected_GADM$NAME_3)
-# 'Westminster' harus diperbaiki mengikuti data gov menjadi 'City of Westminster'
+# 'Westminster' --> 'City of Westminster'
 # But we'll keep it for later since modifying *.shp files need library(sp)
 # Now, we only change the gov data so both files can be merged!
 
@@ -98,7 +91,6 @@ G_LDN_WZ <- G_LDN_WZ %>%
 
 unique(G_LDN_WZ$LA_name)
 # For now, the data is "City of Westminster", but we will change it back later ;)
-
 
 # Find Group & SubGroup classification,
 # I'll classify it by myself based on categories of Groups & Subgroups
@@ -170,7 +162,7 @@ glimpse(Comm_merged)
 ################################################################################
 # 3.1. for hovered label!
 
-library(leaflet)
+
 
 # Leaflet TRIAL!
 mypalette <- colorNumeric(palette='Reds',
