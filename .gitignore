@@ -21,6 +21,5 @@ inst/web
 raw_data/
 hipercow/
 renv/
-outputs/
 Rplots.pdf
 error.rds
